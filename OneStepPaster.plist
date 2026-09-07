@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+		OneStepPaster 需要跟随「任意前台 App」工作（自动粘贴助手），因此不设
+		Bundles 过滤 —— ElleKit 会把它注入到系统内每个进程。
+
+		进程内安全护栏见 src/OneStepPaster/OneStepPaster.xm 顶部
+		（仅当主 bundle 类型为 APPL 且存在 UIApplication 时才注册逻辑），
+		系统守护进程/扩展进程注入后直接空转返回，无副作用。
+
+		若你希望缩小注入面（更省电/更隐蔽），可自行改为 Bundle 白名单，
+		例如：WeChat(com.tencent.xin) / QQ(com.tencent.mqq) / 备忘录(com.apple.mobilenotes)
+		/ 提醒事项(com.apple.reminders) / 信息(com.apple.MobileSMS) / 微信读书 等。
+	-->
+</dict>
+</plist>

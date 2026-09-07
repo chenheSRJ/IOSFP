@@ -1,0 +1,43 @@
+# ============================================================================
+# 远程打包：把本仓库 push 到 GitHub 后，Actions 会自动用 Theos 容器编译出
+# OneStep deb，供无 Mac 的用户直接下载安装。
+#
+# 使用方法：
+#   1. 把这个目录 push 到你的 GitHub 仓库（公开/私有均可）
+#   2. 打开仓库 Actions 页 → 手动运行 "Build OneStep deb"（或每次 push 自动跑）
+#   3. 构建产物在 Artifacts 下载，解压得到 com.onestep.ios_*.deb
+# ============================================================================
+name: Build OneStep deb
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: theos/theos:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          # 容器内已预装 Theos + iOS SDK；仅补 dpkg 工具（一般已带）
+          command -v dpkg-deb || apt-get update && apt-get install -y dpkg-dev
+
+      - name: Build package
+        run: |
+          make clean
+          make package
+          ls -la packages/
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: onestep-deb
+          path: packages/*.deb
+          if-no-files-found: error

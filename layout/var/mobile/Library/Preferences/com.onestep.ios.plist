@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Enabled</key>
+	<true/>
+	<key>SidebarTrigger</key>
+	<string>edgeSwipe</string>
+	<key>TrayCollapsedByDefault</key>
+	<false/>
+	<key>MaxClipboardHistory</key>
+	<integer>12</integer>
+	<key>MaxRecentPhotos</key>
+	<integer>9</integer>
+	<key>AutoPasteDelay</key>
+	<real>0.45</real>
+	<key>RestoreClipboardAfterPaste</key>
+	<true/>
+	<key>PinnedBundleIDs</key>
+	<array>
+		<string>com.apple.mobilenotes</string>
+		<string>com.apple.MobileSMS</string>
+		<string>com.apple.mobilemail</string>
+		<string>com.apple.mobilesafari</string>
+	</array>
+</dict>
+</plist>

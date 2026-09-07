@@ -1,0 +1,12 @@
+# Theos 编译产物
+packages/
+.theos/
+*.deb
+*.ipa
+
+# 系统/编辑器
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
