@@ -16,8 +16,9 @@
 // ---------------------------------------------------------------------------
 #pragma mark - 小组件
 
-/// 剪贴板历史行（支持点击=复制、长按=拖拽）
-@interface OSClipRowView : UIButton
+/// 剪贴板历史行（支持点击=复制、长按=拖拽）。
+/// 注意：不继承 UIButton——UIButton 自带只读 titleLabel，会与子类读写同名属性冲突。
+@interface OSClipRowView : UIControl
 @property (nonatomic, copy) NSString *clipText;
 @property (nonatomic, strong) UILabel *titleLabel;
 @end

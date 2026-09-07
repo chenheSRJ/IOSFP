@@ -172,7 +172,7 @@ static void OSEnsureSBSLaunch(void) {
 
     id options = [[optCls alloc] init];
     id sortDesc = [NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO];
-    [options performSelector:OSSel("setSortDescriptors:") withObject:@[ sortDesc ]];
+    OSMsg1(options, OSSel("setSortDescriptors:"), @[ sortDesc ]);
 
     id result = OSMsg1(assetCls, OSSel("fetchAssetsWithOptions:"), options);
     if (!result) return @[];
