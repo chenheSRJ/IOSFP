@@ -92,7 +92,7 @@ static NSString *OSCurrentBundleID(void) {
 - (void)registerObservers;
 - (void)applicationDidBecomeActive;
 - (void)keyboardDidShow;
-- (void)pasteboardWasWritten; // 剪贴板钩子回调
+- (void)pasteboardWasWritten:(UIPasteboard *)pb; // 剪贴板钩子回调
 @end
 
 @implementation OSPasteEngine {
