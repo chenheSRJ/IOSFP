@@ -209,7 +209,7 @@ static void OSWriteGeneralClipboard(OSDragPayload *p) {
     if (text.length == 0) return;
     UIPasteboard *gp = [UIPasteboard generalPasteboard];
     gp.items = @[ @{ OSUTIPlainText : text } ];
-    OSLog(@"OneStep 复制回剪贴板：%.24@…", text);
+    OSLog(@"OneStep 复制回剪贴板：%@", text);
 }
 
 @end
