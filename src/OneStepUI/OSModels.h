@@ -4,6 +4,7 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "OSCommon.h" // OSItemKind / 跨进程常量
 
 NS_ASSUME_NONNULL_BEGIN
 

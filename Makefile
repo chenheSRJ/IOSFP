@@ -27,7 +27,7 @@ TWEAK_NAME = OneStepUI OneStepPaster
 OneStepUI_FILES = $(wildcard src/Shared/*.m) \
                   $(wildcard src/OneStepUI/*.xm) \
                   $(wildcard src/OneStepUI/*.m)
-OneStepUI_CFLAGS = -fobjc-arc -I$(THEOS_PROJECT_DIR)/src
+OneStepUI_CFLAGS = -fobjc-arc -I$(THEOS_PROJECT_DIR)/src -I$(THEOS_PROJECT_DIR)/src/Shared
 OneStepUI_CFLAGS += -Wno-deprecated-declarations
 OneStepUI_LIBRARIES =
 OneStepUI_FRAMEWORKS = UIKit Foundation CoreGraphics QuartzCore
@@ -39,7 +39,7 @@ OneStepUI_FRAMEWORKS = UIKit Foundation CoreGraphics QuartzCore
 OneStepPaster_FILES = $(wildcard src/Shared/*.m) \
                       $(wildcard src/OneStepPaster/*.xm) \
                       $(wildcard src/OneStepPaster/*.m)
-OneStepPaster_CFLAGS = -fobjc-arc -I$(THEOS_PROJECT_DIR)/src
+OneStepPaster_CFLAGS = -fobjc-arc -I$(THEOS_PROJECT_DIR)/src -I$(THEOS_PROJECT_DIR)/src/Shared
 OneStepPaster_CFLAGS += -Wno-deprecated-declarations
 OneStepPaster_FRAMEWORKS = UIKit Foundation CoreGraphics QuartzCore
 
