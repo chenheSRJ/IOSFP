@@ -66,8 +66,8 @@
         __block NSInteger tries = 0;
         [self _pollUntilReady:^{
             tries++;
-            return (tries < 20) &&
-                   ([UIApplication sharedApplication].windows.count == 0);
+            return (BOOL)(tries < 20 &&
+                          [UIApplication sharedApplication].windows.count == 0);
         } then:^{
             self->_waitingForUI = NO;
             [self _buildUI];
@@ -193,7 +193,6 @@
 static void OSHandleDarwinNote(CFNotificationCenterRef center, void *observer,
                                CFStringRef name, const void *object,
                                CFDictionaryRef userInfo) {
-    OSUIManager *m = (__bridge OSUIManager *)observer;
     NSString *n = (__bridge NSString *)name;
     dispatch_async(dispatch_get_main_queue(), ^{
         if ([n isEqualToString:OSNotifyClipboardChanged]) {

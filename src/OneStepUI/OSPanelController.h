@@ -49,6 +49,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)reloadAllData; // 剪贴板历史 + 相册
 - (void)reloadClipboardOnly;
 
+/// 拖拽结束后恢复被长按变淡的源条目
+- (void)restoreSourceHighlight;
+
 // ---------- 拖放命中 ----------
 /// 返回 window 坐标系下该点的落点目标：OSAppItem / OSActionItem / nil
 - (nullable id)dropTargetAtWindowPoint:(CGPoint)p;
