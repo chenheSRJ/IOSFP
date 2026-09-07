@@ -1,11 +1,13 @@
 # ============================================================================
-# 远程打包：把本仓库 push 到 GitHub 后，Actions 会自动用 Theos 容器编译出
-# OneStep deb，供无 Mac 的用户直接下载安装。
+# 远程打包：push 到 GitHub 后，Actions 自动编译出 OneStep deb，供直接下载。
+#
+# 方案说明：使用社区标准 Randomblock1/theos-action（安装 Theos + iOS SDK，
+# 无需 Mac、无需 Docker 容器镜像）。
 #
 # 使用方法：
-#   1. 把这个目录 push 到你的 GitHub 仓库（公开/私有均可）
-#   2. 打开仓库 Actions 页 → 手动运行 "Build OneStep deb"（或每次 push 自动跑）
-#   3. 构建产物在 Artifacts 下载，解压得到 com.onestep.ios_*.deb
+#   1. push 本仓库（或手动运行本工作流）
+#   2. 打开仓库 Actions 页查看 "Build OneStep deb"
+#   3. 构建产物在 Artifacts：onestep-deb（解压得 com.onestep.ios_*.deb）
 # ============================================================================
 name: Build OneStep deb
 
@@ -18,16 +20,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: theos/theos:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
-        run: |
-          # 容器内已预装 Theos + iOS SDK；仅补 dpkg 工具（一般已带）
-          command -v dpkg-deb || apt-get update && apt-get install -y dpkg-dev
+      - name: Install Theos (+ iOS SDK)
+        uses: Randomblock1/theos-action@v1
+        with:
+          theos-src: "https://github.com/theos/theos"
+          theos-sdks: "https://github.com/theos/sdks"
 
       - name: Build package
         run: |
