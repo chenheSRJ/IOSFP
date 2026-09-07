@@ -15,19 +15,19 @@
 NS_ASSUME_NONNULL_BEGIN
 
 // ---------- objc_msgSend 精简封装 ----------
-NS_INLINE id OSMsg(id obj, SEL sel) {
+NS_INLINE id OSMsg(id _Nullable obj, SEL sel) {
     return ((id(*)(id, SEL))objc_msgSend)(obj, sel);
 }
-NS_INLINE id OSMsg1(id obj, SEL sel, id p1) {
+NS_INLINE id OSMsg1(id _Nullable obj, SEL sel, id _Nullable p1) {
     return ((id(*)(id, SEL, id))objc_msgSend)(obj, sel, p1);
 }
-NS_INLINE id OSMsg2(id obj, SEL sel, id p1, id p2) {
+NS_INLINE id OSMsg2(id _Nullable obj, SEL sel, id _Nullable p1, id _Nullable p2) {
     return ((id(*)(id, SEL, id, id))objc_msgSend)(obj, sel, p1, p2);
 }
-NS_INLINE NSInteger OSMsgInt0(id obj, SEL sel) {
+NS_INLINE NSInteger OSMsgInt0(id _Nullable obj, SEL sel) {
     return ((NSInteger(*)(id, SEL))objc_msgSend)(obj, sel);
 }
-NS_INLINE BOOL OSMsgBool1(id obj, SEL sel, id p1) {
+NS_INLINE BOOL OSMsgBool1(id _Nullable obj, SEL sel, id _Nullable p1) {
     return ((BOOL(*)(id, SEL, id))objc_msgSend)(obj, sel, p1);
 }
 NS_INLINE SEL OSSel(const char *name) { return sel_registerName(name); }
