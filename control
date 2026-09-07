@@ -1,10 +1,9 @@
 Package: com.onestep.ios
 Name: OneStep for iOS（一步）
-Version: 0.1.0-1
+Version: 0.2.0-1
 Architecture: iphoneos-arm64
-Description: 锤子科技 OneStep（一步）交互的越狱移植：屏幕边缘滑出侧边栏直达常用 App/联系人，顶部托盘收纳最近剪贴板与图片，拖放内容一键发送并自动粘贴。
+Description: 锤子科技 OneStep（一步）交互的越狱移植：屏幕边缘滑出侧边栏直达常用 App，顶部托盘收纳最近剪贴板与图片，拖放内容一键发送并自动粘贴。
 Depends: mobilesubstrate (>= 0.9.5000), firmware (>= 15.0)
 Maintainer: OneStep-iOS Project
 Author: OneStep-iOS Project
 Section: Tweaks
-Icon: file:///var/jb/Library/PreferenceLoader/Preferences/OneStep/icon.png

@@ -194,6 +194,19 @@ static CGFloat const OSPanelWidthRatio = 0.80f;
 @property (nonatomic, strong) OSAppCell *highlightedAppCell;
 @property (nonatomic, strong) OSActionButton *highlightedAction;
 
+// 设置模式（v0.2 新增，面板内自带，无需 PreferenceLoader）
+@property (nonatomic, assign) BOOL settingsMode;
+@property (nonatomic, strong) UIButton *gearButton;   // 进入设置
+@property (nonatomic, strong) UIButton *backButton;   // 返回主面板
+@property (nonatomic, strong) UIView *settingsView;
+@property (nonatomic, strong) NSArray<UIView *> *settingsRows;
+@property (nonatomic, strong) UISwitch *enabledSwitch;
+@property (nonatomic, strong) UISwitch *restoreSwitch;
+@property (nonatomic, strong) UISlider *delaySlider;
+@property (nonatomic, strong) UILabel *delayValueLabel;
+@property (nonatomic, strong) UISlider *historySlider;
+@property (nonatomic, strong) UILabel *historyValueLabel;
+
 @property (nonatomic, assign) CGFloat panelWidth;
 @end
 
@@ -216,6 +229,7 @@ static CGFloat const OSPanelWidthRatio = 0.80f;
     [self _buildTray];
     [self _buildActions];
     [self _buildAppsCollection];
+    [self _buildSettings];
     [self _layoutAll];
 }
 
@@ -282,11 +296,241 @@ static CGFloat const OSPanelWidthRatio = 0.80f;
            forControlEvents:UIControlEventTouchUpInside];
     [_panelContent addSubview:_closeButton];
 
+    // v0.2：设置入口（齿轮），关闭键左侧
+    _gearButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [_gearButton setImage:[UIImage systemImageNamed:@"gearshape"]
+                 forState:UIControlStateNormal];
+    _gearButton.tintColor = [UIColor colorWithWhite:1 alpha:0.9];
+    [_gearButton addTarget:self action:@selector(_enterSettings)
+          forControlEvents:UIControlEventTouchUpInside];
+    [_panelContent addSubview:_gearButton];
+
+    // v0.2：设置页返回
+    _backButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [_backButton setImage:[UIImage systemImageNamed:@"chevron.left"]
+                 forState:UIControlStateNormal];
+    _backButton.tintColor = [UIColor colorWithWhite:1 alpha:0.9];
+    [_backButton addTarget:self action:@selector(_exitSettings)
+          forControlEvents:UIControlEventTouchUpInside];
+    _backButton.hidden = YES;
+    [_panelContent addSubview:_backButton];
+
     // 面板边缘向左拖 = 收起
     UIPanGestureRecognizer *closePan = [[UIPanGestureRecognizer alloc]
                                          initWithTarget:self action:@selector(_panelPanned:)];
     closePan.delegate = self;
     [_panelView addGestureRecognizer:closePan];
+}
+
+// ---------------------------------------------------------------------------
+#pragma mark - 设置页（v0.2，面板内置）
+
+- (void)_buildSettings {
+    _settingsView = [[UIView alloc] initWithFrame:CGRectZero];
+    _settingsView.hidden = YES;
+    [_panelContent addSubview:_settingsView];
+
+    NSMutableArray *rows = [NSMutableArray array];
+    CGFloat rowH = 58;
+
+    // ---- 行：启用（UISwitch）
+    UISwitch *en = [UISwitch new];
+    [en addTarget:self action:@selector(_enabledChanged:)
+ forControlEvents:UIControlEventValueChanged];
+    _enabledSwitch = en;
+    UIView *r0 = [self _makeSettingRowTitle:@"启用 OneStep"
+                                       note:@"关闭后需重启 SpringBoard 生效"
+                                    control:en];
+    [rows addObject:r0];
+
+    // ---- 行：粘贴后还原剪贴板
+    UISwitch *rs = [UISwitch new];
+    [rs addTarget:self action:@selector(_restoreChanged:)
+ forControlEvents:UIControlEventValueChanged];
+    _restoreSwitch = rs;
+    UIView *r1 = [self _makeSettingRowTitle:@"粘贴后还原剪贴板"
+                                       note:@"发送完成后恢复你原来的剪贴板"
+                                    control:rs];
+    [rows addObject:r1];
+
+    // ---- 行：自动粘贴延时
+    UISlider *dl = [UISlider new];
+    dl.minimumValue = 0.1f;
+    dl.maximumValue = 2.0f;
+    _delaySlider = dl;
+    _delayValueLabel = [self _valueLabel];
+    UIView *r2 = [self _makeSettingRowTitle:@"自动粘贴延时"
+                                       note:nil
+                                    control:dl];
+    [r2 addSubview:_delayValueLabel];
+    [dl addTarget:self action:@selector(_delayChanged:)
+ forControlEvents:UIControlEventValueChanged];
+    [rows addObject:r2];
+
+    // ---- 行：剪贴板历史上限
+    UISlider *hs = [UISlider new];
+    hs.minimumValue = 1;
+    hs.maximumValue = 50;
+    _historySlider = hs;
+    _historyValueLabel = [self _valueLabel];
+    UIView *r3 = [self _makeSettingRowTitle:@"剪贴板历史上限"
+                                       note:nil
+                                    control:hs];
+    [r3 addSubview:_historyValueLabel];
+    [hs addTarget:self action:@selector(_historyChanged:)
+ forControlEvents:UIControlEventValueChanged];
+    [rows addObject:r3];
+
+    // ---- 行：关于
+    UIView *r4 = [self _makeSettingRowTitle:@"关于 OneStep"
+                                       note:@"v0.2 · 自动粘贴仅在白名单 App 生效；\n屏幕右缘把手条展开面板"
+                                    control:nil];
+    [rows addObject:r4];
+
+    _settingsRows = rows;
+    for (UIView *v in rows) [_settingsView addSubview:v];
+
+    [self _reloadSettingsValues];
+}
+
+/// 通用设置行：左侧标题(+可选说明)，右侧放控件
+- (UIView *)_makeSettingRowTitle:(NSString *)title
+                            note:(NSString *)note
+                         control:(UIView *)control {
+    UIView *row = [[UIView alloc] initWithFrame:CGRectZero];
+    row.userInteractionEnabled = YES;
+
+    UILabel *t = [self _rowLabel];
+    t.text = title;
+    t.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+    t.tag = 1001;
+    [row addSubview:t];
+
+    if (note.length) {
+        UILabel *n = [self _rowLabel];
+        n.text = note;
+        n.font = [UIFont systemFontOfSize:10];
+        n.textColor = [UIColor colorWithWhite:1 alpha:0.5];
+        n.numberOfLines = 2;
+        n.tag = 1002;
+        [row addSubview:n];
+    }
+    if (control) {
+        control.tag = 1003;
+        [row addSubview:control];
+    }
+    return row;
+}
+
+- (UILabel *)_rowLabel {
+    UILabel *l = [[UILabel alloc] initWithFrame:CGRectZero];
+    l.textColor = [UIColor colorWithWhite:1 alpha:0.92];
+    l.userInteractionEnabled = NO;
+    return l;
+}
+
+- (UILabel *)_valueLabel {
+    UILabel *l = [self _rowLabel];
+    l.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    l.textColor = [UIColor systemTealColor];
+    l.textAlignment = NSTextAlignmentCenter;
+    return l;
+}
+
+/// 布局设置行（在 _layoutAll 设置模式下调用）
+- (void)_layoutSettingsRowsInWidth:(CGFloat)w fromY:(CGFloat)y {
+    for (UIView *row in _settingsRows) {
+        CGFloat rh = 64;
+        row.frame = CGRectMake(0, y, w, rh);
+        UILabel *t = [row viewWithTag:1001];
+        UILabel *n = [row viewWithTag:1002];
+        UIView *ctl = [row viewWithTag:1003];
+        if (t) t.frame = CGRectMake(2, 10, w - 90, 20);
+        if (n) n.frame = CGRectMake(2, 30, w - 90, 30);
+        if (ctl) {
+            CGFloat cwctl = 56;
+            if ([ctl isKindOfClass:UISlider.class]) {
+                cwctl = w * 0.5;
+                ctl.frame = CGRectMake(w - cwctl - 66, 12, cwctl, 24);
+                // 值标签
+                for (UIView *sub in row.subviews) {
+                    if ([sub isKindOfClass:UILabel.class] &&
+                        sub.tag != 1001 && sub.tag != 1002) {
+                        sub.frame = CGRectMake(w - 62, 10, 60, 20);
+                    }
+                }
+            } else {
+                ctl.frame = CGRectMake(w - cwctl - 4,
+                                       (rh - ctl.intrinsicContentSize.height) / 2,
+                                       cwctl, ctl.intrinsicContentSize.height);
+            }
+        }
+        y += rh;
+    }
+    _settingsView.frame = CGRectMake(0, 34, w, y - 34);
+}
+
+- (void)_reloadSettingsValues {
+    NSUserDefaults *p = OSPrefs();
+    _enabledSwitch.on = OSEnabled();
+    BOOL restore = YES;
+    NSNumber *r = [p objectForKey:OSKeyRestoreClipboardAfterPaste];
+    if (r) restore = r.boolValue;
+    _restoreSwitch.on = restore;
+
+    double delay = 0.45;
+    NSNumber *dd = [p objectForKey:OSKeyAutoPasteDelay];
+    if (dd) delay = dd.doubleValue;
+    _delaySlider.value = delay;
+    _delayValueLabel.text = [NSString stringWithFormat:@"%.2fs", delay];
+
+    NSInteger hist = OSMaxClipboardHistory();
+    _historySlider.value = hist;
+    _historyValueLabel.text = [NSString stringWithFormat:@"%ld", (long)hist];
+}
+
+- (void)_enterSettings {
+    if (_settingsMode) return;
+    _settingsMode = YES;
+    [self _reloadSettingsValues];
+    _titleLabel.text = @"设置";
+    _gearButton.hidden = YES;
+    _backButton.hidden = NO;
+    _closeButton.hidden = YES;
+    _settingsView.hidden = NO;
+    [self.view setNeedsLayout];
+}
+
+- (void)_exitSettings {
+    if (!_settingsMode) return;
+    _settingsMode = NO;
+    _titleLabel.text = @"一步";
+    _gearButton.hidden = NO;
+    _backButton.hidden = YES;
+    _closeButton.hidden = NO;
+    _settingsView.hidden = YES;
+    [self.view setNeedsLayout];
+}
+
+- (void)_enabledChanged:(UISwitch *)s {
+    [OSPrefs() setBool:s.isOn forKey:OSKeyEnabled];
+}
+
+- (void)_restoreChanged:(UISwitch *)s {
+    [OSPrefs() setBool:s.isOn forKey:OSKeyRestoreClipboardAfterPaste];
+}
+
+- (void)_delayChanged:(UISlider *)sl {
+    double v = sl.value;
+    [OSPrefs() setDouble:v forKey:OSKeyAutoPasteDelay];
+    _delayValueLabel.text = [NSString stringWithFormat:@"%.2fs", v];
+}
+
+- (void)_historyChanged:(UISlider *)sl {
+    NSInteger v = (NSInteger)lround(sl.value);
+    sl.value = v;
+    [OSPrefs() setInteger:v forKey:OSKeyMaxClipboardHistory];
+    _historyValueLabel.text = [NSString stringWithFormat:@"%ld", (long)v];
 }
 
 - (void)_buildTray {
@@ -405,9 +649,32 @@ static CGFloat const OSPanelWidthRatio = 0.80f;
     CGFloat cw = _panelWidth - pad * 2;
     _panelContent.frame = CGRectMake(pad, top, cw, H - top - safe.bottom - 6);
 
-    // 标题行
-    _titleLabel.frame = CGRectMake(0, 0, cw - 40, 26);
-    _closeButton.frame = CGRectMake(cw - 30, 0, 30, 26);
+    // 标题行（设置模式与主模式）
+    _gearButton.hidden = _settingsMode;
+    _backButton.hidden = !_settingsMode;
+    _closeButton.hidden = _settingsMode;
+    if (_settingsMode) {
+        _titleLabel.frame = CGRectMake(40, 0, cw - 40, 26);
+        _backButton.frame = CGRectMake(0, 0, 34, 26);
+    } else {
+        _titleLabel.frame = CGRectMake(0, 0, cw - 60, 26);
+        _gearButton.frame = CGRectMake(cw - 58, 0, 26, 26);
+        _closeButton.frame = CGRectMake(cw - 30, 0, 30, 26);
+    }
+
+    if (_settingsMode) {
+        // 隐藏主内容，只排设置行
+        _trayView.hidden = YES;
+        _appsView.hidden = YES;
+        _actionRow.hidden = YES;
+        _settingsView.hidden = NO;
+        [self _layoutSettingsRowsInWidth:cw fromY:0];
+        return;
+    }
+    _settingsView.hidden = YES;
+    _trayView.hidden = NO;
+    _appsView.hidden = NO;
+    _actionRow.hidden = NO;
 
     // 托盘
     CGFloat trayTop = 34;
@@ -532,6 +799,15 @@ static CGFloat const OSPanelWidthRatio = 0.80f;
         return;
     }
     _expanded = expanded;
+    if (!expanded && _settingsMode) {
+        // 收起时复位设置模式，下次展开回到主界面
+        _settingsMode = NO;
+        _titleLabel.text = @"一步";
+        _gearButton.hidden = NO;
+        _backButton.hidden = YES;
+        _closeButton.hidden = NO;
+        _settingsView.hidden = YES;
+    }
     _dimView.hidden = NO;
     _handleView.hidden = expanded; // 展开后把手让位
 

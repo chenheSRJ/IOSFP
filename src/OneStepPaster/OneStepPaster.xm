@@ -452,6 +452,8 @@ static BOOL OSTextInput(UIResponder *r) {
 
 %ctor {
     if (!OSIsAppProcess()) return; // 守护进程/扩展：直接空转
+    // 防御：绝不注册到 SpringBoard（避免与 OneStepUI 重复 hook UIPasteboard）
+    if (OSStrEq(OSCurrentBundleID(), @"com.apple.springboard")) return;
     dispatch_async(dispatch_get_main_queue(), ^{
         [[OSPasteEngine shared] registerObservers];
     });

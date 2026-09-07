@@ -62,6 +62,12 @@
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
+        // 后台预热：剪贴板历史(pasteboard 服务)与应用枚举不占主线程
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+            [OSPasteHistory shared];
+            [OSAppSource shared];
+        });
+
         // SpringBoard 早期 UIWindow/Scene 可能未就绪：短轮询
         __block NSInteger tries = 0;
         [self _pollUntilReady:^{
@@ -69,11 +75,24 @@
             return (BOOL)(tries < 20 &&
                           [UIApplication sharedApplication].windows.count == 0);
         } then:^{
-            self->_waitingForUI = NO;
-            [self _buildUI];
-            self->_started = YES;
-            [self _registerObservers];
-            OSLog(@"OSUIManager 已启动");
+            @try {
+                self->_waitingForUI = NO;
+                [self _buildUI];
+                self->_started = YES;
+                [self _registerObservers];
+                OSLog(@"OSUIManager 已启动");
+            } @catch (NSException *e) {
+                // UI 构建失败绝不让 SpringBoard 带病运行（白苹果防护）
+                self->_waitingForUI = NO;
+                self->_started = NO;
+                OSLog(@"OSUIManager 启动异常，本次停用 UI：%@", e);
+                if (self->_overlayWindow) {
+                    [self->_overlayWindow setHidden:YES];
+                    self->_overlayWindow.rootViewController = nil;
+                    self->_overlayWindow = nil;
+                    self->_panel = nil;
+                }
+            }
         }];
     });
 }
