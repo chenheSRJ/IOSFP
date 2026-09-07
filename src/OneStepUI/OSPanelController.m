@@ -331,7 +331,6 @@ static CGFloat const OSPanelWidthRatio = 0.80f;
     [_panelContent addSubview:_settingsView];
 
     NSMutableArray *rows = [NSMutableArray array];
-    CGFloat rowH = 58;
 
     // ---- 行：启用（UISwitch）
     UISwitch *en = [UISwitch new];
