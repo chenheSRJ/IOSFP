@@ -89,10 +89,24 @@
 
     dispatch_async(dispatch_get_main_queue(), ^{
         @try {
+            OSLog(@"[UI] start：进程 %@，windows=%lu",
+                  [NSProcessInfo processInfo].processName,
+                  (unsigned long)[UIApplication sharedApplication].windows.count);
             [self _buildUI];
-            OSLog(@"OSSplitManager 已启动");
+            OSLog(@"[UI] OSSplitManager 已启动");
+            // scene/几何可能晚就绪：稍后强制重排一次，保证按钮在正确位置
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
+                                         (int64_t)(1.0 * NSEC_PER_SEC)),
+                           dispatch_get_main_queue(), ^{
+                @try {
+                    [self _layoutOverlayControls];
+                    [self _diagnose];
+                } @catch (NSException *e) {
+                    OSLog(@"[UI] 延迟重排异常：%@", e);
+                }
+            });
         } @catch (NSException *e) {
-            OSLog(@"OSSplitManager 启动异常（停用 UI）：%@", e);
+            OSLog(@"[UI] OSSplitManager 启动异常（停用 UI）：%@", e);
             started = NO;
             [self _teardownUI];
         }
@@ -111,6 +125,21 @@
     self.pickerLayer = nil;
 }
 
+/// 可见性自检（日志）
+- (void)_diagnose {
+    if (!self.overlay) { OSLog(@"[UI] 诊断：overlay 为空"); return; }
+    OSLog(@"[UI] 诊断 overlay: hidden=%d frame=%@ level=%.1f keyWindow=%@",
+          self.overlay.hidden, NSStringFromCGRect(self.overlay.frame),
+          self.overlay.windowLevel,
+          [UIApplication sharedApplication].keyWindow);
+    OSLog(@"[UI] 诊断 rootView: frame=%@ pill.frame=%@ pillHidden=%d",
+          NSStringFromCGRect(self.rootView.frame),
+          NSStringFromCGRect(self.pillButton.frame),
+          self.pillButton.hidden);
+    OSLog(@"[UI] 诊断 scenes=%lu",
+          (unsigned long)[UIApplication sharedApplication].connectedScenes.count);
+}
+
 - (UIWindow *)_makeOverlayWindow {
     UIWindowScene *scene = nil;
     if (@available(iOS 13.0, *)) {
@@ -123,12 +152,14 @@
         : [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
     w.windowLevel = UIWindowLevelStatusBar - 1;
     w.backgroundColor = [UIColor clearColor];
+    OSLog(@"[UI] overlay 窗口创建: frame=%@", NSStringFromCGRect(w.frame));
     return w;
 }
 
 - (void)_buildUI {
     self.overlay = [self _makeOverlayWindow];
-    self.rootView = [[OSPassRootView alloc] initWithFrame:self.overlay.bounds];
+    self.overlay.frame = [UIScreen mainScreen].bounds;
+    self.rootView = [[OSPassRootView alloc] initWithFrame:[UIScreen mainScreen].bounds];
     OSSplitRootVC *vc = [OSSplitRootVC new];
     vc.hostView = self.rootView;
     self.overlay.rootViewController = vc;
