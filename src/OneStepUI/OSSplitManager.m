@@ -12,6 +12,7 @@
 
 #import "OSSplitManager.h"
 #import "OSCommon.h"
+#import "OSDiag.h"
 #import "OSRuntime.h"
 #import "OSAppSource.h"
 #import "OSModels.h"
@@ -89,11 +90,11 @@
 
     dispatch_async(dispatch_get_main_queue(), ^{
         @try {
-            OSLog(@"[UI] start：进程 %@，windows=%lu",
+            OSLogF(@"[UI] start：进程 %@，windows=%lu",
                   [NSProcessInfo processInfo].processName,
                   (unsigned long)[UIApplication sharedApplication].windows.count);
             [self _buildUI];
-            OSLog(@"[UI] OSSplitManager 已启动");
+            OSLogF(@"[UI] OSSplitManager 已启动");
             // scene/几何可能晚就绪：稍后强制重排一次，保证按钮在正确位置
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
                                          (int64_t)(1.0 * NSEC_PER_SEC)),
@@ -102,11 +103,11 @@
                     [self _layoutOverlayControls];
                     [self _diagnose];
                 } @catch (NSException *e) {
-                    OSLog(@"[UI] 延迟重排异常：%@", e);
+                    OSLogF(@"[UI] 延迟重排异常：%@", e);
                 }
             });
         } @catch (NSException *e) {
-            OSLog(@"[UI] OSSplitManager 启动异常（停用 UI）：%@", e);
+            OSLogF(@"[UI] OSSplitManager 启动异常（停用 UI）：%@", e);
             started = NO;
             [self _teardownUI];
         }
@@ -127,16 +128,16 @@
 
 /// 可见性自检（日志）
 - (void)_diagnose {
-    if (!self.overlay) { OSLog(@"[UI] 诊断：overlay 为空"); return; }
-    OSLog(@"[UI] 诊断 overlay: hidden=%d frame=%@ level=%.1f keyWindow=%@",
+    if (!self.overlay) { OSLogF(@"[UI] 诊断：overlay 为空"); return; }
+    OSLogF(@"[UI] 诊断 overlay: hidden=%d frame=%@ level=%.1f keyWindow=%@",
           self.overlay.hidden, NSStringFromCGRect(self.overlay.frame),
           self.overlay.windowLevel,
           [UIApplication sharedApplication].keyWindow);
-    OSLog(@"[UI] 诊断 rootView: frame=%@ pill.frame=%@ pillHidden=%d",
+    OSLogF(@"[UI] 诊断 rootView: frame=%@ pill.frame=%@ pillHidden=%d",
           NSStringFromCGRect(self.rootView.frame),
           NSStringFromCGRect(self.pillButton.frame),
           self.pillButton.hidden);
-    OSLog(@"[UI] 诊断 scenes=%lu",
+    OSLogF(@"[UI] 诊断 scenes=%lu",
           (unsigned long)[UIApplication sharedApplication].connectedScenes.count);
 }
 
@@ -152,7 +153,7 @@
         : [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
     w.windowLevel = UIWindowLevelStatusBar - 1;
     w.backgroundColor = [UIColor clearColor];
-    OSLog(@"[UI] overlay 窗口创建: frame=%@", NSStringFromCGRect(w.frame));
+    OSLogF(@"[UI] overlay 窗口创建: frame=%@", NSStringFromCGRect(w.frame));
     return w;
 }
 
@@ -164,6 +165,8 @@
     vc.hostView = self.rootView;
     self.overlay.rootViewController = vc;
     [self.overlay setHidden:NO];
+    [self.overlay makeKeyAndVisible]; // 探针：确保窗口进入显示链
+    OSLogF(@"[UI] overlay makeKeyAndVisible 完成");
 
     // 分屏胶囊（右上角）
     self.pillButton = [UIButton buttonWithType:UIButtonTypeCustom];
@@ -311,7 +314,7 @@
     NSString *current = [OSSceneKit frontmostAppBundleID];
     if (!current) current = self.fullBid;
     if (!current || OSStrEq(current, newFullBid)) {
-        OSLog(@"[Split] 无法确定主/副：cur=%@ new=%@", current, newFullBid);
+        OSLogF(@"[Split] 无法确定主/副：cur=%@ new=%@", current, newFullBid);
         return;
     }
 
@@ -321,7 +324,7 @@
     // 原前台 app 将退后台：保活它（防挂起），随后它的小窗画面由 scene host 呈现
     [OSSceneKit startKeepAliveForBundleID:current];
 
-    OSLog(@"[Split] 启动全屏 %@，%@ 转小窗", newFullBid, current);
+    OSLogF(@"[Split] 启动全屏 %@，%@ 转小窗", newFullBid, current);
     [OSRuntime launchAppWithBundleID:newFullBid];
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.8 * NSEC_PER_SEC)),
@@ -342,7 +345,7 @@
     self.floatBid = oldFull;
     [OSSceneKit startKeepAliveForBundleID:oldFull];
 
-    OSLog(@"[Split] 切换：%@ 全屏，%@ 转小窗", oldFloat, oldFull);
+    OSLogF(@"[Split] 切换：%@ 全屏，%@ 转小窗", oldFloat, oldFull);
     [OSRuntime launchAppWithBundleID:oldFloat];
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.8 * NSEC_PER_SEC)),
@@ -359,7 +362,7 @@
     self.fullBid = nil;
     [self _removeFloat];
     [self _layoutOverlayControls];
-    OSLog(@"[Split] 分屏结束");
+    OSLogF(@"[Split] 分屏结束");
 }
 
 // ---------------------------------------------------------------------------
@@ -372,7 +375,7 @@
     CGRect f = OSFloatDefaultFrame([OSSceneKit screenBounds]);
     UIView *host = [OSSceneKit layerHostViewForBundleID:bid frame:f];
     if (!host) {
-        OSLog(@"[Split] 小窗挂载失败：无 scene 画面 (%@)——真实渲染能力待真机确认", bid);
+        OSLogF(@"[Split] 小窗挂载失败：无 scene 画面 (%@)——真实渲染能力待真机确认", bid);
         return;
     }
     host.tag = 0x5A10; // "Z"
@@ -391,7 +394,7 @@
     [tap requireGestureRecognizerToFail:pan];
 
     [self _layoutOverlayControls];
-    OSLog(@"[Split] 小窗已挂载: %@", bid);
+    OSLogF(@"[Split] 小窗已挂载: %@", bid);
 }
 
 - (void)_removeFloat {

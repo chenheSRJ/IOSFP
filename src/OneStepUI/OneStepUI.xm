@@ -1,48 +1,57 @@
 //
-//  OneStepUI.xm  ——  SpringBoard 注入入口（v0.3 分屏）
+//  OneStepUI.xm  ——  SpringBoard 注入入口（v0.3.2 探针版）
 //
-//  职责：SpringBoard 完全就绪后（延迟、非启动早期）拉起 OSSplitManager。
-//  安全策略沿袭 v0.2：延迟启动、@try 保护、幂等——不因注入代码拖垮 SB。
-//
-//  filter：OneStepUI.plist（仅 com.apple.springboard）
+//  职责：SpringBoard 就绪后拉起 OSSplitManager。
+//  探针：所有关键路径写文件日志 /var/mobile/onestep.log（cat 即可）。
+//  触发：%hook applicationDidFinishLaunching + UIApplication 通知 + ctor 兜底轮询。
 //
 
 #import <UIKit/UIKit.h>
 #import "OSSplitManager.h"
+#import "OSDiag.h"
 
 static BOOL g_scheduled = NO;
 
 static void OSScheduleStart(void) {
     if (g_scheduled) return;
     g_scheduled = YES;
+    OSLogF(@"入口: 调度启动 (delay 2.5s)");
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
                                  (int64_t)(2.5 * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{
+        OSLogF(@"入口: 延迟启动触发");
         @try {
             [[OSSplitManager shared] start];
         } @catch (NSException *e) {
-            NSLog(@"[OneStep] 启动异常（已安全忽略）: %@", e);
+            OSLogF(@"入口: 启动异常（忽略）%@", e);
         }
     });
+}
+
+static void OSObserveLaunchNotification(void) {
+    // UIApplicationDidFinishLaunchingNotification 兜底（不依赖 hook 命中）
+    [[NSNotificationCenter defaultCenter]
+        addObserverForName:UIApplicationDidFinishLaunchingNotification
+                    object:nil queue:[NSOperationQueue mainQueue]
+                usingBlock:^(NSNotification *note) {
+                    OSLogF(@"入口: 收到 didFinishLaunching 通知");
+                    OSScheduleStart();
+                }];
 }
 
 %hook SpringBoard
 
 - (void)applicationDidFinishLaunching:(id)application {
     %orig;
+    OSLogF(@"入口: hook applicationDidFinishLaunching 命中");
     OSScheduleStart();
 }
 
 %end
 
 %ctor {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
-                                 (int64_t)(4.0 * NSEC_PER_SEC)),
-                   dispatch_get_main_queue(), ^{
-        @try {
-            [[OSSplitManager shared] start];
-        } @catch (NSException *e) {
-            NSLog(@"[OneStep] 兜底启动异常（已安全忽略）: %@", e);
-        }
-    });
+    OSLogF(@"===== dylib 已加载 (ctor) pid=%d =====",
+           (int)getpid());
+    OSObserveLaunchNotification();
+    OSScheduleStart();
 }

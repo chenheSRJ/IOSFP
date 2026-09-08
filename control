@@ -1,6 +1,6 @@
 Package: com.onestep.ios
 Name: OneStep Split（分屏）
-Version: 0.3.1-1
+Version: 0.3.2-1
 Architecture: iphoneos-arm64
 Description: iPhone 分屏插件：全屏主 App + 实时小浮窗，点小窗切换主副。iOS 17 / rootless。
 Depends: mobilesubstrate (>= 0.9.5000), firmware (>= 15.0)
